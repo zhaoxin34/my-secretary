@@ -52,13 +52,18 @@ my-secretary contact add --name "张三" --category work \
 ## 事件管理
 
 ```bash
-# 添加事件
-my-secretary event add --contact 1 --type meeting --subject "主题" --content "内容"
+# 添加事件（联系人用姓名，多个用逗号分隔）
+my-secretary event add --contacts "张三,王大伟" --type meeting --subject "主题" --content "内容"
 
 # 列出事件
 my-secretary event list
-my-secretary event list --contact 1
+
+# 模糊搜索联系人
+my-secretary event list --contact "张三"
+
+# 按类型筛选
 my-secretary event list --type email
+my-secretary event list --type meeting
 
 # 查看事件详情
 my-secretary event get <id>
@@ -76,7 +81,7 @@ my-secretary event delete <id>
 # 统计信息
 my-secretary stats
 
-# 搜索事件
+# 搜索事件（搜索主题、内容、联系人）
 my-secretary search "关键词"
 ```
 
@@ -84,4 +89,5 @@ my-secretary search "关键词"
 
 - category: work / friend / family
 - nickname: 多个昵称用逗号分隔（如 "三儿、小张"）
+- contacts (事件): 多个联系人用逗号分隔（如 "张三,李四"）
 - type (事件): email / chat / phone / meeting / 微信 / 钉钉 / 线下 等

@@ -68,12 +68,12 @@ def test_delete_contact(test_db):
 def test_add_event(test_db):
     # First add a contact
     contact = Contact(id=None, name="Event User", category="work")
-    contact_id = db.add_contact(contact)
+    db.add_contact(contact)
 
     # Then add an event
     event = Event(
         id=None,
-        contact_id=contact_id,
+        contacts="Event User",
         type="meeting",
         subject="Test Meeting",
         content="Test content",
@@ -91,13 +91,13 @@ def test_list_events(test_db):
     # Add contacts and events
     c1 = Contact(id=None, name="User1", category="work")
     c2 = Contact(id=None, name="User2", category="friend")
-    c1_id = db.add_contact(c1)
-    c2_id = db.add_contact(c2)
+    db.add_contact(c1)
+    db.add_contact(c2)
 
     events = [
-        Event(id=None, contact_id=c1_id, type="email", subject="Email 1"),
-        Event(id=None, contact_id=c1_id, type="meeting", subject="Meeting 1"),
-        Event(id=None, contact_id=c2_id, type="chat", subject="Chat 1"),
+        Event(id=None, contacts="User1", type="email", subject="Email 1"),
+        Event(id=None, contacts="User1", type="meeting", subject="Meeting 1"),
+        Event(id=None, contacts="User2", type="chat", subject="Chat 1"),
     ]
     for e in events:
         db.add_event(e)
@@ -105,7 +105,7 @@ def test_list_events(test_db):
     all_events = db.list_events()
     assert len(all_events) == 3
 
-    user1_events = db.list_events(contact_id=c1_id)
+    user1_events = db.list_events(contact="User1")
     assert len(user1_events) == 2
 
     email_events = db.list_events(event_type="email")
@@ -114,11 +114,11 @@ def test_list_events(test_db):
 
 def test_search_events(test_db):
     contact = Contact(id=None, name="Search User", category="work")
-    contact_id = db.add_contact(contact)
+    db.add_contact(contact)
 
     events = [
-        Event(id=None, contact_id=contact_id, type="email", subject="Project Update", content="About project"),
-        Event(id=None, contact_id=contact_id, type="meeting", subject="Other Meeting", content="Random"),
+        Event(id=None, contacts="Search User", type="email", subject="Project Update", content="About project"),
+        Event(id=None, contacts="Search User", type="meeting", subject="Other Meeting", content="Random"),
     ]
     for e in events:
         db.add_event(e)
@@ -138,10 +138,9 @@ def test_stats(test_db):
     for c in contacts:
         db.add_contact(c)
 
-    c1_id = db.get_contact(1).id
     events = [
-        Event(id=None, contact_id=c1_id, type="email", subject="Email 1"),
-        Event(id=None, contact_id=c1_id, type="meeting", subject="Meeting 1"),
+        Event(id=None, contacts="Work1", type="email", subject="Email 1"),
+        Event(id=None, contacts="Work1", type="meeting", subject="Meeting 1"),
     ]
     for e in events:
         db.add_event(e)

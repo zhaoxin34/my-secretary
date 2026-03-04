@@ -46,7 +46,7 @@ my-secretary contact list
 ### 添加事件
 
 ```bash
-my-secretary event add --contact 1 --type meeting --subject "项目讨论" --content "讨论了项目细节"
+my-secretary event add --contacts "张三,王大伟" --type meeting --subject "项目讨论" --content "讨论了项目细节"
 ```
 
 ### 查看统计
@@ -113,6 +113,16 @@ my-secretary search "项目"
 | is_onsite | 是否驻场 |
 | has_left | 是否离职 |
 | left_date | 离职日期 |
+
+## 事件字段
+
+| 字段 | 说明 |
+|------|------|
+| contacts | 联系人姓名，多个用逗号分隔（如 "张三,李四"） |
+| type | 类型：email/chat/phone/meeting/微信/钉钉/线下等 |
+| subject | 主题 |
+| content | 内容摘要 |
+| occurred_at | 发生时间 |
 
 ## 使用 Makefile
 

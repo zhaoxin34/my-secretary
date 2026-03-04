@@ -28,7 +28,7 @@ class Contact:
 @dataclass
 class Event:
     id: Optional[int]
-    contact_id: int
+    contacts: str  # 联系人姓名，多个用逗号分隔
     type: str  # email/chat/phone/meeting/微信/钉钉/线下等
     subject: str
     content: Optional[str] = None

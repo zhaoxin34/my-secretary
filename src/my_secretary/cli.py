@@ -56,10 +56,8 @@ def search(keyword: str = typer.Argument(..., help="Search keyword")):
     console.print(f"[bold]Found {len(events)} event(s):[/bold]\n")
 
     for e in events:
-        contact = db.get_contact(e.contact_id)
-        contact_name = contact.name if contact else f"Contact {e.contact_id}"
         console.print(f"[magenta]Event #{e.id}[/magenta] - {e.type}")
-        console.print(f"  Contact: {contact_name}")
+        console.print(f"  Contacts: {e.contacts}")
         console.print(f"  Subject: {e.subject}")
         if e.content:
             console.print(f"  Content: {e.content[:100]}{'...' if len(e.content) > 100 else ''}")

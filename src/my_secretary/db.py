@@ -47,13 +47,12 @@ def init_db():
         """
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contact_id INTEGER NOT NULL,
+            contacts TEXT NOT NULL,
             type TEXT NOT NULL,
             subject TEXT NOT NULL,
             content TEXT,
             occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """,
     )
@@ -89,6 +88,12 @@ def init_db():
         pass
     try:
         cursor.execute("ALTER TABLE contacts ADD COLUMN left_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Migration: add contacts column to events (replace contact_id with contacts)
+    try:
+        cursor.execute("ALTER TABLE events ADD COLUMN contacts TEXT")
     except sqlite3.OperationalError:
         pass
 
@@ -134,9 +139,15 @@ def row_to_contact(row: sqlite3.Row) -> Contact:
 
 
 def row_to_event(row: sqlite3.Row) -> Event:
+    # Handle migration from old contact_id to contacts
+    contacts = row["contacts"] if "contacts" in row.keys() else None
+    if contacts is None and "contact_id" in row.keys() and row["contact_id"]:
+        # Migrate old contact_id to contacts
+        contacts = str(row["contact_id"])
+
     return Event(
         id=row["id"],
-        contact_id=row["contact_id"],
+        contacts=contacts or "",
         type=row["type"],
         subject=row["subject"],
         content=row["content"],
@@ -292,9 +303,9 @@ def add_event(event: Event) -> int:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        """INSERT INTO events (contact_id, type, subject, content, occurred_at)
+        """INSERT INTO events (contacts, type, subject, content, occurred_at)
            VALUES (?, ?, ?, ?, ?)""",
-        (event.contact_id, event.type, event.subject, event.content, event.occurred_at),
+        (event.contacts, event.type, event.subject, event.content, event.occurred_at),
     )
     conn.commit()
     event_id = cursor.lastrowid
@@ -313,16 +324,18 @@ def get_event(event_id: int) -> Optional[Event]:
     return None
 
 
-def list_events(contact_id: Optional[int] = None, event_type: Optional[str] = None) -> list[Event]:
+def list_events(contact: Optional[str] = None, event_type: Optional[str] = None) -> list[Event]:
+    """List events, optionally filter by contact name (fuzzy) or event type"""
     conn = get_connection()
     cursor = conn.cursor()
 
     query = "SELECT * FROM events WHERE 1=1"
     params = []
 
-    if contact_id:
-        query += " AND contact_id = ?"
-        params.append(contact_id)
+    if contact:
+        # Fuzzy search in contacts field (which can contain multiple names separated by comma)
+        query += " AND contacts LIKE ?"
+        params.append(f"%{contact}%")
     if event_type:
         query += " AND type = ?"
         params.append(event_type)
@@ -336,7 +349,7 @@ def list_events(contact_id: Optional[int] = None, event_type: Optional[str] = No
 
 
 def update_event(event_id: int, **kwargs) -> bool:
-    allowed = ["contact_id", "type", "subject", "content", "occurred_at"]
+    allowed = ["contacts", "type", "subject", "content", "occurred_at"]
     updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
     if not updates:
         return False
@@ -367,8 +380,8 @@ def search_events(keyword: str) -> list[Event]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM events WHERE subject LIKE ? OR content LIKE ? ORDER BY occurred_at DESC",
-        (f"%{keyword}%", f"%{keyword}%"),
+        "SELECT * FROM events WHERE subject LIKE ? OR content LIKE ? OR contacts LIKE ? ORDER BY occurred_at DESC",
+        (f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"),
     )
     rows = cursor.fetchall()
     conn.close()
