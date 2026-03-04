@@ -80,7 +80,7 @@ def get(event_id: int = typer.Argument(..., help="Event ID")):
 
     contact = db.get_contact(event.contact_id)
 
-    console.print(f"[bold]Event Details[/bold]")
+    console.print("[bold]Event Details[/bold]")
     console.print(f"ID: {event.id}")
     console.print(f"Contact: {contact.name if contact else event.contact_id}")
     console.print(f"Type: {event.type}")

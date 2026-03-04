@@ -25,7 +25,7 @@ def stats():
     stats_data = db.get_stats()
 
     console.print("[bold]Statistics[/bold]")
-    console.print(f"\n[bold cyan]Contacts:[/bold cyan]")
+    console.print("\n[bold cyan]Contacts:[/bold cyan]")
     console.print(f"Total: {stats_data['total_contacts']}")
     if stats_data["by_category"]:
         console.print("By category:")
@@ -34,7 +34,7 @@ def stats():
     else:
         console.print("  No contacts yet")
 
-    console.print(f"\n[bold cyan]Events:[/bold cyan]")
+    console.print("\n[bold cyan]Events:[/bold cyan]")
     console.print(f"Total: {stats_data['total_events']}")
     if stats_data["by_type"]:
         console.print("By type:")

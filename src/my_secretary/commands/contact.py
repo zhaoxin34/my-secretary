@@ -56,7 +56,7 @@ def get(contact_id: int = typer.Argument(..., help="Contact ID")):
         console.print("[red]Contact not found[/red]")
         raise typer.Exit(1)
 
-    console.print(f"[bold]Contact Details[/bold]")
+    console.print("[bold]Contact Details[/bold]")
     console.print(f"ID: {contact.id}")
     console.print(f"Name: {contact.name}")
     console.print(f"Category: {contact.category}")
