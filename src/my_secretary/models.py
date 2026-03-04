@@ -12,6 +12,15 @@ class Contact:
     position: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    nickname: Optional[str] = None  # 昵称，多个用逗号分隔，如 "三儿、小张"
+    # Work-specific fields
+    contract_entity: Optional[str] = None  # 合同主体
+    dept_level1: Optional[str] = None  # 一级部门
+    dept_level2: Optional[str] = None  # 二级部门
+    entry_date: Optional[datetime] = None  # 入职日期
+    is_onsite: Optional[bool] = None  # 是否驻场
+    has_left: Optional[bool] = None  # 是否离职
+    left_date: Optional[datetime] = None  # 已离职日期
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

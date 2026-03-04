@@ -5,9 +5,11 @@
 ## 功能特性
 
 - 联系人管理：支持 work/friend/family 三种类别
+- 昵称支持：支持多个昵称，用逗号分隔
+- 姓名唯一：姓名不允许重复，自动加后缀
 - 事件记录：记录与联系人的各种交互（邮件、会议、电话等）
 - 统计功能：查看联系人和事件的分类统计
-- 搜索功能：通过关键词搜索事件内容
+- 搜索功能：支持按姓名和昵称搜索
 
 ## 安装
 
@@ -15,11 +17,10 @@
 make install
 ```
 
-或手动安装：
+或全局安装：
 
 ```bash
-uv sync
-uv pip install -e .
+uv tool install -e .
 ```
 
 ## 快速开始
@@ -28,6 +29,12 @@ uv pip install -e .
 
 ```bash
 my-secretary contact add --name "张三" --category work --company "某公司" --email "zhangsan@example.com"
+```
+
+### 搜索联系人（支持姓名和昵称）
+
+```bash
+my-secretary contact list --search "三"
 ```
 
 ### 列出所有联系人
@@ -82,6 +89,30 @@ my-secretary search "项目"
 |------|------|
 | `stats` | 显示统计信息 |
 | `search <keyword>` | 搜索事件 |
+
+## 联系人字段
+
+| 字段 | 说明 |
+|------|------|
+| name | 姓名（唯一，不允许重复） |
+| nickname | 昵称，多个用逗号分隔（如 "三儿、小张"） |
+| category | 类别：work/friend/family |
+| company | 公司 |
+| position | 职位 |
+| phone | 电话 |
+| email | 邮箱 |
+
+### work 类型特有字段
+
+| 字段 | 说明 |
+|------|------|
+| contract_entity | 合同主体 |
+| dept_level1 | 一级部门 |
+| dept_level2 | 二级部门 |
+| entry_date | 入职日期 |
+| is_onsite | 是否驻场 |
+| has_left | 是否离职 |
+| left_date | 离职日期 |
 
 ## 使用 Makefile
 

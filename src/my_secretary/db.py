@@ -29,6 +29,14 @@ def init_db():
             position TEXT,
             phone TEXT,
             email TEXT,
+            nickname TEXT,
+            contract_entity TEXT,
+            dept_level1 TEXT,
+            dept_level2 TEXT,
+            entry_date TEXT,
+            is_onsite INTEGER,
+            has_left INTEGER,
+            left_date TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -50,6 +58,55 @@ def init_db():
     """,
     )
 
+    # Migration: add new columns if they don't exist
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN nickname TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN contract_entity TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN dept_level1 TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN dept_level2 TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN entry_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN is_onsite INTEGER")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN has_left INTEGER")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN left_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add unique constraint on name
+    try:
+        # Check if there are duplicates first
+        cursor.execute("SELECT name, COUNT(*) as cnt FROM contacts GROUP BY name HAVING cnt > 1")
+        duplicates = cursor.fetchall()
+        if duplicates:
+            # There are duplicates, don't add unique constraint yet
+            print(f"Warning: Found duplicate names: {[d['name'] for d in duplicates]}")
+        else:
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_name ON contacts(name)")
+    except sqlite3.OperationalError:
+        pass
+    except sqlite3.IntegrityError:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -63,6 +120,14 @@ def row_to_contact(row: sqlite3.Row) -> Contact:
         position=row["position"],
         phone=row["phone"],
         email=row["email"],
+        nickname=row["nickname"],
+        contract_entity=row["contract_entity"],
+        dept_level1=row["dept_level1"],
+        dept_level2=row["dept_level2"],
+        entry_date=datetime.fromisoformat(row["entry_date"]) if row["entry_date"] else None,
+        is_onsite=bool(row["is_onsite"]) if row["is_onsite"] is not None else None,
+        has_left=bool(row["has_left"]) if row["has_left"] is not None else None,
+        left_date=datetime.fromisoformat(row["left_date"]) if row["left_date"] else None,
         created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
         updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None,
     )
@@ -84,13 +149,48 @@ def row_to_event(row: sqlite3.Row) -> Event:
 def add_contact(contact: Contact) -> int:
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """INSERT INTO contacts (name, category, company, position, phone, email)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (contact.name, contact.category, contact.company, contact.position, contact.phone, contact.email),
-    )
+
+    # Check for duplicate name and auto-rename if needed
+    original_name = contact.name
+    base_name = original_name
+    counter = 1
+
+    while True:
+        try:
+            cursor.execute(
+                """INSERT INTO contacts (name, category, company, position, phone, email, nickname,
+                   contract_entity, dept_level1, dept_level2, entry_date, is_onsite, has_left, left_date)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    contact.name,
+                    contact.category,
+                    contact.company,
+                    contact.position,
+                    contact.phone,
+                    contact.email,
+                    contact.nickname,
+                    contact.contract_entity,
+                    contact.dept_level1,
+                    contact.dept_level2,
+                    contact.entry_date.isoformat() if contact.entry_date else None,
+                    int(contact.is_onsite) if contact.is_onsite is not None else None,
+                    int(contact.has_left) if contact.has_left is not None else None,
+                    contact.left_date.isoformat() if contact.left_date else None,
+                ),
+            )
+            break
+        except sqlite3.IntegrityError:
+            # Name already exists, try with suffix
+            counter += 1
+            contact.name = f"{base_name}-{counter}"
+
     conn.commit()
     contact_id = cursor.lastrowid
+
+    # Notify if name was changed
+    if contact.name != original_name:
+        print(f"Note: Name '{original_name}' already exists, using '{contact.name}' instead")
+
     conn.close()
     return contact_id
 
@@ -106,23 +206,63 @@ def get_contact(contact_id: int) -> Optional[Contact]:
     return None
 
 
-def list_contacts(category: Optional[str] = None) -> list[Contact]:
+def list_contacts(category: Optional[str] = None, search: Optional[str] = None) -> list[Contact]:
+    """List contacts, optionally filter by category or search in name/nickname"""
     conn = get_connection()
     cursor = conn.cursor()
+
+    query = "SELECT * FROM contacts WHERE 1=1"
+    params = []
+
     if category:
-        cursor.execute("SELECT * FROM contacts WHERE category = ? ORDER BY name", (category,))
-    else:
-        cursor.execute("SELECT * FROM contacts ORDER BY name")
+        query += " AND category = ?"
+        params.append(category)
+
+    if search:
+        # Search in both name and nickname
+        query += " AND (name LIKE ? OR nickname LIKE ?)"
+        params.append(f"%{search}%")
+        params.append(f"%{search}%")
+
+    query += " ORDER BY name"
+
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     return [row_to_contact(row) for row in rows]
 
 
 def update_contact(contact_id: int, **kwargs) -> bool:
-    allowed = ["name", "category", "company", "position", "phone", "email"]
+    allowed = [
+        "name",
+        "category",
+        "company",
+        "position",
+        "phone",
+        "email",
+        "nickname",
+        "contract_entity",
+        "dept_level1",
+        "dept_level2",
+        "entry_date",
+        "is_onsite",
+        "has_left",
+        "left_date",
+    ]
     updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
     if not updates:
         return False
+
+    # Convert datetime to ISO format strings
+    if "entry_date" in updates and updates["entry_date"]:
+        updates["entry_date"] = updates["entry_date"].isoformat()
+    if "left_date" in updates and updates["left_date"]:
+        updates["left_date"] = updates["left_date"].isoformat()
+    # Convert bool to int for SQLite
+    if "is_onsite" in updates and updates["is_onsite"] is not None:
+        updates["is_onsite"] = int(updates["is_onsite"])
+    if "has_left" in updates and updates["has_left"] is not None:
+        updates["has_left"] = int(updates["has_left"])
 
     updates["updated_at"] = datetime.now().isoformat()
     set_clause = ", ".join(f"{k} = ?" for k in updates.keys())

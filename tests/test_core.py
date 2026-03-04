@@ -151,3 +151,53 @@ def test_stats(test_db):
     assert stats["by_category"]["work"] == 2
     assert stats["by_category"]["friend"] == 1
     assert stats["total_events"] == 2
+
+
+def test_contact_nickname(test_db):
+    """Test contact with nickname"""
+    contact = Contact(id=None, name="张三", category="work", nickname="三儿、小张")
+    contact_id = db.add_contact(contact)
+
+    retrieved = db.get_contact(contact_id)
+    assert retrieved.nickname == "三儿、小张"
+
+
+def test_search_contacts_by_name_and_nickname(test_db):
+    """Test search contacts by name or nickname"""
+    contacts = [
+        Contact(id=None, name="张三", category="work", nickname="三儿"),
+        Contact(id=None, name="李四", category="work"),
+        Contact(id=None, name="王五", category="friend", nickname="小王"),
+    ]
+    for c in contacts:
+        db.add_contact(c)
+
+    # Search by name
+    results = db.list_contacts(search="张三")
+    assert len(results) == 1
+    assert results[0].name == "张三"
+
+    # Search by nickname
+    results = db.list_contacts(search="三儿")
+    assert len(results) == 1
+    assert results[0].name == "张三"
+
+    # Search by nickname (another contact)
+    results = db.list_contacts(search="小王")
+    assert len(results) == 1
+    assert results[0].name == "王五"
+
+
+def test_unique_name_auto_rename(test_db):
+    """Test unique name constraint with auto rename"""
+    # Add first contact
+    contact1 = Contact(id=None, name="张三", category="work")
+    db.add_contact(contact1)
+
+    # Try to add another with same name
+    contact2 = Contact(id=None, name="张三", category="work")
+    contact2_id = db.add_contact(contact2)
+
+    # Should be renamed to 张三-2
+    retrieved = db.get_contact(contact2_id)
+    assert retrieved.name == "张三-2"
