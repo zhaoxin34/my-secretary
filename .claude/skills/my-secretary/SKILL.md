@@ -91,3 +91,38 @@ my-secretary search "关键词"
 - nickname: 多个昵称用逗号分隔（如 "三儿、小张"）
 - contacts (事件): 多个联系人用逗号分隔（如 "张三,李四"）
 - type (事件): email / chat / phone / meeting / 微信 / 钉钉 / 线下 等
+
+## 画像管理
+
+```bash
+# 查看画像（通过 ID）
+my-secretary profile get <id>
+
+# 按姓名搜索联系人并查看画像
+my-secretary profile get-by-name "张三"
+
+# 更新画像
+my-secretary profile update <id> --personality "性格描述" --status busy
+
+# 画像标签管理
+my-secretary profile tag add <id> --tag "标签名" --type personality
+my-secretary profile tag list <id>
+my-secretary profile tag delete <id> --tag "标签名"
+
+# 画像关系管理
+my-secretary profile relation add <id> --related <相关联系人ID> --type colleague
+my-secretary profile relation list <id>
+my-secretary profile relation delete <id> --related <相关联系人ID>
+
+# 画像项目管理
+my-secretary profile project add <id> --project "项目名"
+my-secretary profile project list <id>
+my-secretary profile project delete <id> --project "项目名"
+```
+
+## 脚本
+
+```bash
+# 搜索联系人并查看画像（通过姓名）
+.claude/skills/my-secretary/profile_lookup.sh "张三"
+```

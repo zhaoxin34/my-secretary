@@ -4,6 +4,7 @@ from rich.console import Console
 from . import db
 from .commands.contact import contact_app
 from .commands.event import event_app
+from .commands.profile import profile_app
 
 app = typer.Typer(help="My Secretary - Contact and Event Management System")
 console = Console()
@@ -17,6 +18,7 @@ def callback():
 
 app.add_typer(contact_app, name="contact")
 app.add_typer(event_app, name="event")
+app.add_typer(profile_app, name="profile")
 
 
 @app.command("stats")

@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .models import Contact, Event
+from .models import Contact, Event, Profile, ProfileTag, ProfileRelation
 
 DB_PATH = Path.home() / ".my_secretary" / "data.db"
 
@@ -111,6 +111,48 @@ def init_db():
         pass
     except sqlite3.IntegrityError:
         pass
+
+    # Create profiles table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_id INTEGER UNIQUE REFERENCES contacts(id) ON DELETE CASCADE,
+            personality TEXT,
+            current_status TEXT,
+            status_note TEXT,
+            projects TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """,
+    )
+
+    # Create profile_tags table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile_tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
+            tag TEXT NOT NULL,
+            tag_type TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """,
+    )
+
+    # Create profile_relations table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile_relations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
+            related_contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+            relation_type TEXT,
+            note TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """,
+    )
 
     conn.commit()
     conn.close()
@@ -412,3 +454,174 @@ def get_stats() -> dict:
         "total_events": total_events,
         "by_type": by_type,
     }
+
+
+# Profile operations
+def row_to_profile(row: sqlite3.Row) -> Profile:
+    return Profile(
+        id=row["id"],
+        contact_id=row["contact_id"],
+        personality=row["personality"],
+        current_status=row["current_status"],
+        status_note=row["status_note"],
+        projects=row["projects"],
+        updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None,
+    )
+
+
+def row_to_profile_tag(row: sqlite3.Row) -> ProfileTag:
+    return ProfileTag(
+        id=row["id"],
+        profile_id=row["profile_id"],
+        tag=row["tag"],
+        tag_type=row["tag_type"],
+        created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
+    )
+
+
+def row_to_profile_relation(row: sqlite3.Row) -> ProfileRelation:
+    return ProfileRelation(
+        id=row["id"],
+        profile_id=row["profile_id"],
+        related_contact_id=row["related_contact_id"],
+        relation_type=row["relation_type"],
+        note=row["note"],
+        created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
+    )
+
+
+def get_or_create_profile(contact_id: int) -> Profile:
+    """Get existing profile or create a new one"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM profiles WHERE contact_id = ?", (contact_id,))
+    row = cursor.fetchone()
+    if row:
+        conn.close()
+        return row_to_profile(row)
+
+    # Create new profile
+    cursor.execute(
+        "INSERT INTO profiles (contact_id) VALUES (?)",
+        (contact_id,),
+    )
+    conn.commit()
+    profile_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row_to_profile(row)
+
+
+def get_profile(contact_id: int) -> Optional[Profile]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM profiles WHERE contact_id = ?", (contact_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row_to_profile(row)
+    return None
+
+
+def update_profile(contact_id: int, **kwargs) -> bool:
+    allowed = ["personality", "current_status", "status_note", "projects"]
+    updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
+    if not updates:
+        return False
+
+    updates["updated_at"] = datetime.now().isoformat()
+
+    # Check if profile exists
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM profiles WHERE contact_id = ?", (contact_id,))
+    row = cursor.fetchone()
+    if not row:
+        # Create profile first
+        cursor.execute("INSERT INTO profiles (contact_id) VALUES (?)", (contact_id,))
+        conn.commit()
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
+    values = list(updates.values()) + [contact_id]
+    cursor.execute(f"UPDATE profiles SET {set_clause} WHERE contact_id = ?", values)
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+    return affected > 0
+
+
+def delete_profile(contact_id: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM profiles WHERE contact_id = ?", (contact_id,))
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+    return affected > 0
+
+
+# Profile tags operations
+def add_profile_tag(profile_id: int, tag: str, tag_type: str) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO profile_tags (profile_id, tag, tag_type) VALUES (?, ?, ?)",
+        (profile_id, tag, tag_type),
+    )
+    conn.commit()
+    tag_id = cursor.lastrowid
+    conn.close()
+    return tag_id
+
+
+def get_profile_tags(profile_id: int) -> list[ProfileTag]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM profile_tags WHERE profile_id = ? ORDER BY created_at DESC", (profile_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [row_to_profile_tag(row) for row in rows]
+
+
+def delete_profile_tag(profile_id: int, tag: str) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM profile_tags WHERE profile_id = ? AND tag = ?", (profile_id, tag))
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+    return affected > 0
+
+
+# Profile relations operations
+def add_profile_relation(profile_id: int, related_contact_id: int, relation_type: str, note: Optional[str] = None) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO profile_relations (profile_id, related_contact_id, relation_type, note) VALUES (?, ?, ?, ?)",
+        (profile_id, related_contact_id, relation_type, note),
+    )
+    conn.commit()
+    relation_id = cursor.lastrowid
+    conn.close()
+    return relation_id
+
+
+def get_profile_relations(profile_id: int) -> list[ProfileRelation]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM profile_relations WHERE profile_id = ? ORDER BY created_at DESC", (profile_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [row_to_profile_relation(row) for row in rows]
+
+
+def delete_profile_relation(profile_id: int, related_contact_id: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM profile_relations WHERE profile_id = ? AND related_contact_id = ?", (profile_id, related_contact_id))
+    conn.commit()
+    affected = cursor.rowcount
+    conn.close()
+    return affected > 0
