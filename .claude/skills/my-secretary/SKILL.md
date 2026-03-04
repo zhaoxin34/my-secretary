@@ -124,5 +124,5 @@ my-secretary profile project delete <id> --project "项目名"
 
 ```bash
 # 搜索联系人并查看画像（通过姓名）
-.claude/skills/my-secretary/profile_lookup.sh "张三"
+profile_lookup.sh "张三"
 ```
