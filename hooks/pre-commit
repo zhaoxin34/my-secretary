@@ -3,14 +3,14 @@
 
 set -e
 
-echo "Running pre-commit checks..."
+echo ">>> Running pre-commit checks..."
 
 # Run ruff check
-echo "Running ruff check..."
+echo ">>> Running ruff check..."
 uv run ruff check --fix src/ tests/
 
 # Run pytest
-echo "Running pytest..."
+echo ">>> Running pytest..."
 PYTHONPATH=src uv run pytest
 
-echo "All checks passed!"
+echo ">>> All checks passed!"

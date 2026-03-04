@@ -112,7 +112,7 @@ def get(contact_id: int = typer.Argument(..., help="Contact ID")):
         console.print("[red]Contact not found[/red]")
         raise typer.Exit(1)
 
-    console.print(f"[bold]Contact Details[/bold]")
+    console.print("[bold]Contact Details[/bold]")
     console.print(f"ID: {contact.id}")
     console.print(f"Name: {contact.name}")
     console.print(f"Nickname: {contact.nickname or '-'}")
@@ -121,7 +121,7 @@ def get(contact_id: int = typer.Argument(..., help="Contact ID")):
     console.print(f"Position: {contact.position or '-'}")
     console.print(f"Phone: {contact.phone or '-'}")
     console.print(f"Email: {contact.email or '-'}")
-    console.print(f"--- Work Info ---")
+    console.print("--- Work Info ---")
     console.print(f"Contract Entity: {contact.contract_entity or '-'}")
     console.print(f"Level 1 Dept: {contact.dept_level1 or '-'}")
     console.print(f"Level 2 Dept: {contact.dept_level2 or '-'}")
