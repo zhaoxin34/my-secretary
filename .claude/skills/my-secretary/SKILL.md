@@ -1,128 +1,107 @@
 ---
 name: my-secretary
-description: This skill should be used when the user wants to manage contacts, track events/interactions with contacts, or view contact/event statistics. Useful for adding, listing, updating, deleting contacts and events.
+description: 个人联系人和事件记录管理。当用户提到联系人、会议、沟通、交流、记录事件、查看联系人的时候使用。或者当用户问某人是个什么养的人时，可以从画像表里查到。通过 sqlite3 直接操作 SQLite 数据库存储联系人和事件信息。
+allowed-tools: Bash(bash:*), Bash(sqlite3:*)
 ---
 
-# My Secretary - 联系人与事件管理
+# My Secretary - 联系人和事件管理
 
-这是一个 CLI 工具，用于管理联系人和与他们相关的事件交互记录。
+## 数据库
 
-## 运行方式
+- 路径：`~/.my_secretary/data.db`
+- 备份目录：`~/.my_secretary/backups`
+- 初始化脚本：`./scripts/init_db.sh`
 
+## 使用流程
+
+1. **先执行维护脚本**：`bash ./scripts/maintain_db.sh`（会自动检查初始化和备份）
+2. 执行查询或其他操作
+3. 如果报错，运行初始化：`bash ./scripts/init_db.sh`
+
+## 使用规范
+
+* 在查找联系人、项目、事件等信息时尽量用like查询，精确度没有太高的要求
+
+## 表结构
+
+### contacts（联系人）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| name | TEXT | 姓名，唯一 |
+| category | TEXT | work/friend/family |
+| company | TEXT | 公司 |
+| position | TEXT | 职位 |
+| phone | TEXT | 电话 |
+| email | TEXT | 邮箱 |
+| nickname | TEXT | 昵称，多个用逗号分隔 |
+| contract_entity | TEXT | 合同主体 |
+| dept_level1 | TEXT | 一级部门 |
+| dept_level2 | TEXT | 二级部门 |
+| entry_date | TEXT | 入职日期 |
+| is_onsite | INTEGER | 1=驻场, 0=非驻场 |
+| has_left | INTEGER | 1=已离职, 0=在职 |
+| left_date | TEXT | 离职日期 |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
+
+### events（事件）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| contacts | TEXT | 联系人姓名，多个用逗号分隔 |
+| type | TEXT | 类型：email/chat/phone/meeting/微信/钉钉/线下 |
+| subject | TEXT | 主题 |
+| content | TEXT | 内容 |
+| occurred_at | DATETIME | 发生时间 |
+| created_at | DATETIME | 创建时间 |
+
+### profiles（画像标签）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| username | TEXT | 联系人姓名 |
+| tag_name | TEXT | 标签名（如：性格、工作百分比、项目等） |
+| tag_value | TEXT | 标签值 |
+| created_at | DATETIME | 创建时间 |
+
+### project_members（项目成员）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| project_name | TEXT | 项目名称 |
+| contact_name | TEXT | 联系人姓名 |
+| role | TEXT | 在项目中的角色 |
+| joined_at | DATETIME | 加入项目时间 |
+| created_at | DATETIME | 创建时间 |
+
+## 操作示例
+
+### 查询联系人
 ```bash
-my-secretary <command>
+sqlite3 -header -column ~/.my_secretary/data.db "SELECT name, category, company, position FROM contacts;"
 ```
 
-## 联系人管理
-
+### 添加联系人
 ```bash
-# 添加联系人（姓名唯一，自动加后缀）
-my-secretary contact add --name "姓名" --category work --company "公司" --email "邮箱"
-
-# 添加带昵称的联系人（多个昵称用逗号分隔）
-my-secretary contact add --name "张三" --nickname "三儿、小张"
-
-# 搜索联系人（同时搜索姓名和昵称）
-my-secretary contact list --search "三"
-
-# 按类别筛选
-my-secretary contact list --category work
-
-# 查看联系人详情
-my-secretary contact get <id>
-
-# 更新联系人
-my-secretary contact update <id> --name "新名字"
-
-# 删除联系人
-my-secretary contact delete <id>
+sqlite3 ~/.my_secretary/data.db "INSERT INTO contacts (name, category, company, position, dept_level1, dept_level2, entry_date, is_onsite) VALUES ('姓名', 'work', '公司', '职位', '部门', '组', '2024-01-01', 1);"
 ```
 
-### work 类型特有的字段
-
+### 查询事件
 ```bash
-my-secretary contact add --name "张三" --category work \
-  --contract-entity "合同主体" \
-  --dept-level1 "一级部门" \
-  --dept-level2 "二级部门" \
-  --entry-date "2024-01-15" \
-  --onsite --not-left
+sqlite3 -header -column ~/.my_secretary/data.db "SELECT occurred_at, contacts, type, subject FROM events ORDER BY occurred_at DESC;"
 ```
 
-## 事件管理
-
+### 查询某人的画像标签
 ```bash
-# 添加事件（联系人用姓名，多个用逗号分隔）
-my-secretary event add --contacts "张三,王大伟" --type meeting --subject "主题" --content "内容"
-
-# 列出事件
-my-secretary event list
-
-# 模糊搜索联系人
-my-secretary event list --contact "张三"
-
-# 按类型筛选
-my-secretary event list --type email
-my-secretary event list --type meeting
-
-# 查看事件详情
-my-secretary event get <id>
-
-# 更新事件
-my-secretary event update <id> --subject "新主题"
-
-# 删除事件
-my-secretary event delete <id>
+sqlite3 -header -column ~/.my_secretary/data.db "SELECT tag_name, tag_value, created_at FROM profiles WHERE username='张三';"
 ```
 
-## 其他命令
-
+### 添加画像标签
 ```bash
-# 统计信息
-my-secretary stats
-
-# 搜索事件（搜索主题、内容、联系人）
-my-secretary search "关键词"
-```
-
-## 字段说明
-
-- category: work / friend / family
-- nickname: 多个昵称用逗号分隔（如 "三儿、小张"）
-- contacts (事件): 多个联系人用逗号分隔（如 "张三,李四"）
-- type (事件): email / chat / phone / meeting / 微信 / 钉钉 / 线下 等
-
-## 画像管理
-
-```bash
-# 查看画像（通过 ID）
-my-secretary profile get <id>
-
-# 按姓名搜索联系人并查看画像
-my-secretary profile get-by-name "张三"
-
-# 更新画像
-my-secretary profile update <id> --personality "性格描述" --status busy
-
-# 画像标签管理
-my-secretary profile tag add <id> --tag "标签名" --type personality
-my-secretary profile tag list <id>
-my-secretary profile tag delete <id> --tag "标签名"
-
-# 画像关系管理
-my-secretary profile relation add <id> --related <相关联系人ID> --type colleague
-my-secretary profile relation list <id>
-my-secretary profile relation delete <id> --related <相关联系人ID>
-
-# 画像项目管理
-my-secretary profile project add <id> --project "项目名"
-my-secretary profile project list <id>
-my-secretary profile project delete <id> --project "项目名"
-```
-
-## 脚本
-
-```bash
-# 搜索联系人并查看画像（通过姓名）
-profile_lookup.sh "张三"
+sqlite3 ~/.my_secretary/data.db "INSERT INTO profiles (username, tag_name, tag_value) VALUES ('张三', '性格', '暴躁');"
 ```

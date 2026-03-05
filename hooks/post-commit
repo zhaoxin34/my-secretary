@@ -1,7 +1,0 @@
-#!/bin/bash
-# Post-commit hook: reinstall CLI tool after commit
-
-echo ">>> Reinstalling my-secretary CLI..."
-cd "$(git rev-parse --show-toplevel)"
-uv tool install -e . --force
-echo "Done."
