@@ -1,22 +1,40 @@
 ---
 name: my-secretary
-description: 个人联系人和事件记录管理。当用户提到联系人、会议、沟通、交流、记录事件、查看联系人的时候使用。或者当用户问某人是个什么养的人时，可以从画像表里查到。通过 sqlite3 直接操作 SQLite 数据库存储联系人和事件信息。
+description: 个人联系人和事件记录管理。当用户提到联系人、会议、沟通、交流、记录事件、查看联系人的时候使用。或者当用户问某人是个什么样的人时，可以从画像表里查到。通过 sqlite3 直接操作 SQLite 数据库存储联系人和事件信息。
 allowed-tools: Bash(bash:*), Bash(sqlite3:*)
 ---
 
 # My Secretary - 联系人和事件管理
 
+## 脚本路径（重要）
+
+本技能可能通过软链接安装到 `~/.workbuddy/skills/my-secretary` 等位置，工作目录不一定是技能目录。
+**必须使用下面的绝对路径调用脚本**，不要用 `./scripts/...` 相对路径：
+
+```bash
+SKILL_DIR="/Volumes/data/working/ai/my-secretary/.claude/skills/my-secretary"
+```
+
 ## 数据库
 
-- 路径：`~/.my_secretary/data.db`
-- 备份目录：`~/.my_secretary/backups`
-- 初始化脚本：`./scripts/init_db.sh`
+- 路径：`~/.my_secretary/data.db`（默认，脚本会自动创建）
+- 备份目录：`~/.my_secretary/backups`（每日首次调用自动备份，保留 30 天）
+- 脚本：`$SKILL_DIR/scripts/init_db.sh`、`$SKILL_DIR/scripts/maintain_db.sh`
 
 ## 使用流程
 
-1. **先执行维护脚本**：`bash ./scripts/maintain_db.sh`（会自动检查初始化和备份）
-2. 执行查询或其他操作
-3. 如果报错，运行初始化：`bash ./scripts/init_db.sh`
+1. **先执行维护脚本**（自动建库、建表、每日备份）：
+
+   ```bash
+   bash /Volumes/data/working/ai/my-secretary/.claude/skills/my-secretary/scripts/maintain_db.sh
+   ```
+
+2. 执行查询或其他操作（见下方「操作示例」）
+3. 如果仍报错（如表结构缺失），运行初始化脚本：
+
+   ```bash
+   bash /Volumes/data/working/ai/my-secretary/.claude/skills/my-secretary/scripts/init_db.sh
+   ```
 
 ## 使用规范
 
